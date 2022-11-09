@@ -26,6 +26,7 @@ BUTTON_RIGHT = board.D26 #board.D21
 BUTTON_LEFT = board.D5 #board.D20
 BUTTON_UP = board.D6
 BUTTON_DOWN = board.D19
+BUTTON_PRESS = board.D13
 BUTTON_KEY1 = board.D21
 BUTTON_KEY2 = board.D20
 BUTTON_KEY3 = board.D16
@@ -37,20 +38,17 @@ dc_pin = digitalio.DigitalInOut(board.D25)
 # Set this to None on the Mini PiTFT
 reset_pin = digitalio.DigitalInOut(board.D27)
 
-
 def init_button(pin):
     button = digitalio.DigitalInOut(pin)
     button.switch_to_input()
     button.pull = digitalio.Pull.UP
     return button
 
-
 # pylint: disable=too-few-public-methods
 class Frame:
     def __init__(self, duration=0):
         self.duration = duration
         self.image = None
-
 
 # pylint: enable=too-few-public-methods
 
@@ -94,6 +92,7 @@ class AnimatedGif:
         self.display = display
         self.advance_button = init_button(BUTTON_RIGHT)
         self.back_button = init_button(BUTTON_LEFT)
+        self.press_button = init_button(BUTTON_PRESS)
         if folder is not None:
             self.load_files(folder)
             self.run()
@@ -154,30 +153,38 @@ class AnimatedGif:
         # Check if we have loaded any files first
         if not self._gif_files:
             print("There are no Gif Images loaded to Play")
-            return False
+            return ('None',False)
         while True:
             for frame_object in self._frames:
                 start_time = time.monotonic()
                 self.display.image(frame_object.image)
                 if not self.advance_button.value:
                     self.advance()
-                    return False
+                    return ('right',False)
                 if not self.back_button.value:
                     self.back()
-                    return False
+                    return ('left',False)
+                if not self.press_button.value:
+                    return ('press',False)
                 while time.monotonic() < (start_time + frame_object.duration / 1000):
                     pass
 
             if self._loop == 1:
-                return True
+                return ('None',True)
             if self._loop > 0:
                 self._loop -= 1
 
     def run(self):
+        e = 'None'
         while True:
-            auto_advance = self.play()
-            if auto_advance:
-                self.advance()
+            if (e in ['right','left','None']):
+                e, auto_advance = self.play()
+                if auto_advance:
+                    self.advance()
+                else:
+                    print(e,auto_advance)
+            else:
+                break
 
 
 # Config for display baudrate (default max is 64mhz):
@@ -233,3 +240,7 @@ disp.image(image)
 time.sleep(5)
 
 gif_player = AnimatedGif(disp, width=disp_width, height=disp_height, folder="images")
+
+image = Image.new('RGB', (disp_width,disp_height), 'white')
+disp.image(image)
+
