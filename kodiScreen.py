@@ -247,6 +247,7 @@ class AnimatedGif:
                 last_time = time.time()
             elif (e in ['colors']):
                 e = self.randomColors()
+                last_time = time.time()
             elif (e in ['press','up','down','wait']):
                 self._timer = round((time.time() - last_time), 2)
                 e = self.showMenu()
