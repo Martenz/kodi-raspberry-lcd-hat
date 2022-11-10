@@ -12,7 +12,7 @@ import os
 import time
 import digitalio
 import board
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps, ImageFont, ImageDraw
 import numpy  # pylint: disable=unused-import
 import adafruit_rgb_display.ili9341 as ili9341
 import adafruit_rgb_display.st7789 as st7789  # pylint: disable=unused-import
@@ -37,6 +37,9 @@ dc_pin = digitalio.DigitalInOut(board.D25)
 
 # Set this to None on the Mini PiTFT
 reset_pin = digitalio.DigitalInOut(board.D27)
+
+font = ImageFont.load_default()
+BORDER = 2
 
 def init_button(pin):
     button = digitalio.DigitalInOut(pin)
@@ -80,6 +83,8 @@ class AnimatedGif:
         self._duration = 0
         self._gif_files = []
         self._frames = []
+        self._index_menu = 0
+        self._timer = 0
 
         if width is not None:
             self._width = width
@@ -93,6 +98,8 @@ class AnimatedGif:
         self.advance_button = init_button(BUTTON_RIGHT)
         self.back_button = init_button(BUTTON_LEFT)
         self.press_button = init_button(BUTTON_PRESS)
+        self.up_button = init_button(BUTTON_UP)
+        self.down_button = init_button(BUTTON_DOWN)
         if folder is not None:
             self.load_files(folder)
             self.run()
@@ -174,15 +181,80 @@ class AnimatedGif:
             if self._loop > 0:
                 self._loop -= 1
 
+    def showMenu(self):
+
+        image = Image.new('RGB', (disp_width,disp_height), 'greenyellow')
+        draw = ImageDraw.Draw(image)
+        texts = ["CLOSE","RESTART","GIFs","COLORS"]
+        for ti in range(len(texts)):
+            (font_width, font_height) = font.getsize(texts[ti])
+            if (ti == self._index_menu):
+                # draw.rounded_rectangle(
+                #     (BORDER,
+                #     (ti+1) * disp_height // (len(texts)+2) - font_height - BORDER,
+                #     disp_width - BORDER - 1,
+                #     (ti+1) * disp_height // (len(texts)+2) + font_height + BORDER),
+                #     fill="black", outline="green",
+                #     width=2, radius=5)
+                draw.rectangle(
+                    (BORDER,
+                    (ti+1) * disp_height // (len(texts)+2) - font_height - BORDER,
+                    disp_width - BORDER - 1,
+                    (ti+1) * disp_height // (len(texts)+2) + font_height + BORDER),
+                    outline='green',fill='black')
+            draw.text(
+                (disp_width // 2 - font_width // 2, (ti+1) * disp_height // (len(texts)+2) - font_height // 2),
+                texts[ti],
+                font=font,
+                fill='white')
+
+        disp.image(image)
+
+        if not self.down_button.value:
+            self._index_menu = self._index_menu + 1 if self._index_menu + 1 < len(texts) else 0
+            return 'down'
+        if not self.up_button.value:
+            self._index_menu = self._index_menu - 1 if self._index_menu - 1 >= 0 else len(texts) - 1
+            return 'up'
+        if not self.press_button.value:
+            return texts[self._index_menu].lower()
+
+        if self._timer < 15:
+            return 'wait'
+        else:
+            return 'close'
+
+    def randomColors(self):
+        image = Image.new('RGB', (disp_width,disp_height), 'white')
+        disp.image(image)
+
+        if not self.press_button.value:
+            return 'press'
+        return 'colors'
+
+
     def run(self):
         e = 'None'
+        start_time = time.time()
+        last_time = start_time
         while True:
-            if (e in ['right','left','None']):
+            if (e in ['right','left','None','close','gifs']):
                 e, auto_advance = self.play()
                 if auto_advance:
                     self.advance()
                 else:
                     print(e,auto_advance)
+                last_time = time.time()
+            elif (e in ['colors']):
+                e = self.randomColors()
+            elif (e in ['press','up','down','wait']):
+                self._timer = round((time.time() - last_time), 2)
+                e = self.showMenu()
+                if (e in ['up','down','press']):
+                    last_time = time.time()
+                print(e,self._timer)
+            elif (e in ['RESTART']):
+                break
             else:
                 break
 
@@ -222,12 +294,12 @@ else:
     disp_width = disp.width
     disp_height = disp.height
 
-image = Image.open("images/programmer.jpg")
+kodi_on = Image.open("images/kodi_on.jpg")
 
 # Scale the image to the smaller screen dimension
 #image = scaleCropImage(image)
 image = ImageOps.fit(  # pylint: disable=no-member
-                image.convert("RGB"),
+                kodi_on.convert("RGB"),
                 (disp_width, disp_height),
                 method=Image.ANTIALIAS,
                 #color=(0, 0, 0),
@@ -241,6 +313,15 @@ time.sleep(5)
 
 gif_player = AnimatedGif(disp, width=disp_width, height=disp_height, folder="images")
 
-image = Image.new('RGB', (disp_width,disp_height), 'white')
+#image = Image.new('RGB', (disp_width,disp_height), 'white')
+kodi_off = Image.open("images/kodi_off.jpg")
+image = ImageOps.fit(  # pylint: disable=no-member
+                kodi_off.convert("RGB"),
+                (disp_width, disp_height),
+                method=Image.ANTIALIAS,
+                #color=(0, 0, 0),
+                centering=(0.5, 0.5),
+            )
+
 disp.image(image)
 
