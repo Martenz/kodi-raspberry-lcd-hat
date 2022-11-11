@@ -13,7 +13,7 @@ import time
 import digitalio
 import board
 from PIL import Image, ImageOps, ImageFont, ImageDraw
-import numpy  # pylint: disable=unused-import
+import numpy as np # pylint: disable=unused-import
 import adafruit_rgb_display.ili9341 as ili9341
 import adafruit_rgb_display.st7789 as st7789  # pylint: disable=unused-import
 import adafruit_rgb_display.hx8357 as hx8357  # pylint: disable=unused-import
@@ -185,7 +185,7 @@ class AnimatedGif:
 
         image = Image.new('RGB', (disp_width,disp_height), 'greenyellow')
         draw = ImageDraw.Draw(image)
-        texts = ["CLOSE","RESTART","GIFs","COLORS"]
+        texts = ["GIFs","COLORS","RESTART KODI","CLOSE"]
         for ti in range(len(texts)):
             (font_width, font_height) = font.getsize(texts[ti])
             if (ti == self._index_menu):
@@ -225,11 +225,14 @@ class AnimatedGif:
             return 'close'
 
     def randomColors(self):
-        image = Image.new('RGB', (disp_width,disp_height), 'white')
-        disp.image(image)
-
-        if not self.press_button.value:
-            return 'press'
+        color = list(np.random.choice(range(256), size=3))
+        image = Image.new('RGB', (disp_width,disp_height), (color[0],color[1],color[2]))
+        disp.image(image)  
+        starttime = time.time()
+        wait_s = 10
+        while time.time() - starttime < wait_s:                                  
+            if not self.press_button.value:
+                return 'press'
         return 'colors'
 
 
@@ -255,6 +258,7 @@ class AnimatedGif:
                     last_time = time.time()
                 print(e,self._timer)
             elif (e in ['RESTART']):
+                os.system("sudo reboot now")
                 break
             else:
                 break
