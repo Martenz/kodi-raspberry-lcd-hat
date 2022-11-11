@@ -185,7 +185,7 @@ class AnimatedGif:
 
         image = Image.new('RGB', (disp_width,disp_height), 'greenyellow')
         draw = ImageDraw.Draw(image)
-        texts = ["GIFs","COLORS","RESTART KODI","CLOSE"]
+        texts = ["GIFs","COLORS","RESTART","CLOSE"]
         for ti in range(len(texts)):
             (font_width, font_height) = font.getsize(texts[ti])
             if (ti == self._index_menu):
@@ -222,7 +222,7 @@ class AnimatedGif:
         if self._timer < 15:
             return 'wait'
         else:
-            return 'close'
+            return 'close'  
 
     def randomColors(self):
         color = list(np.random.choice(range(256), size=3))
@@ -257,7 +257,18 @@ class AnimatedGif:
                 if (e in ['up','down','press']):
                     last_time = time.time()
                 print(e,self._timer)
-            elif (e in ['RESTART']):
+            elif (e in ['restart']):
+                kodi_off = Image.open("images/kodi_off.jpg")
+                image = ImageOps.fit(
+                    kodi_off.convert("RGB"),
+                    (disp_width, disp_height),
+                    method=Image.ANTIALIAS,
+                    #color=(0, 0, 0),
+                    centering=(0.5, 0.5))
+
+                disp.image(image)
+                time.sleep(1)
+                print("Restart Raspberry")
                 os.system("sudo reboot now")
                 break
             else:
